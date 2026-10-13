@@ -2862,6 +2862,53 @@ describe('DOM', () => {
       expect(effectCount).toBe(2)
       expect(cleanupCount).toBe(1)
     })
+
+    it('compares deps with Object.is (NaN)', async () => {
+      let effectCount = 0
+      let cleanupCount = 0
+
+      const App = () => {
+        const [count, setCount] = useState(0)
+        useEffect(() => {
+          effectCount++
+          return () => {
+            cleanupCount++
+          }
+        }, [NaN])
+        return <button onClick={() => setCount(count + 1)}>+</button>
+      }
+      const app = <App />
+      render(app, root)
+      await new Promise((resolve) => setTimeout(resolve))
+      expect(effectCount).toBe(1)
+      expect(cleanupCount).toBe(0)
+      root.querySelectorAll('button')[0].click()
+      await Promise.resolve()
+      await new Promise((resolve) => setTimeout(resolve))
+      expect(effectCount).toBe(1)
+      expect(cleanupCount).toBe(0)
+    })
+
+    it('compares deps with Object.is (0 and -0)', async () => {
+      const values: number[] = []
+
+      const App = () => {
+        const [value, setValue] = useState(0)
+        useEffect(() => {
+          values.push(value)
+        }, [value])
+        return <button onClick={() => setValue(-0)}>update</button>
+      }
+      const app = <App />
+      render(app, root)
+      await new Promise((resolve) => setTimeout(resolve))
+      expect(values.length).toBe(1)
+      root.querySelectorAll('button')[0].click()
+      await Promise.resolve()
+      await new Promise((resolve) => setTimeout(resolve))
+      expect(values.length).toBe(2)
+      expect(Object.is(values[1], -0)).toBe(true)
+    })
   })
 
   describe('useLayoutEffect', () => {
